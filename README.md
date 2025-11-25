@@ -45,4 +45,4 @@ The API is configured to allow requests from React development servers:
 
 ### Weather Forecast
 
-- `GET /api/weatherforecast` - Returns a list of weather forecasts
+- `GET /api/WeatherForecast` - Returns a list of weather forecasts

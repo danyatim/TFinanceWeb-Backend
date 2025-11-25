@@ -1,6 +1,6 @@
 @TFinanceWeb.Api_HostAddress = http://localhost:5113
 
-GET {{TFinanceWeb.Api_HostAddress}}/weatherforecast/
+GET {{TFinanceWeb.Api_HostAddress}}/api/WeatherForecast
 Accept: application/json
 
 ###
