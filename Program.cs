@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using TFinanceWeb.Api.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -17,6 +20,30 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
+builder.Services.AddDbContext<FinanceWebDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("TFINANCEWEB_DB_CONNECTION_STRING"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(5),
+                errorCodesToAdd: null
+            );
+            npgsqlOptions.CommandTimeout(30);
+        }
+    );
+    
+    // Только для Development
+    if (!builder.Environment.IsDevelopment()) return;
+    options.EnableSensitiveDataLogging();
+    options.EnableDetailedErrors();
+});
+
+
+
 
 var app = builder.Build();
 

@@ -1,4 +1,5 @@
 @TFinanceWeb.Api_HostAddress = http://localhost:5113
+@TFinanceWeb = variable value
 
 GET {{TFinanceWeb.Api_HostAddress}}/api/WeatherForecast
 Accept: application/json
