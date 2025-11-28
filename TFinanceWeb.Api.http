@@ -4,19 +4,10 @@
 
 GET {{TFinanceWeb.Api_HostAddress}}/api/auth/register
 Content-Type: application/json
-{
-    "username": "Tim",
-    "login": "Tim",
-    "email": "danya_tim@icloud.com",
-    "password": "13553_Danil",
-    "confirmPassword": "13553_Danil",
-}
+
 ###
 
 GET {{TFinanceWeb.Api_HostAddress}}/api/auth/login
 Content-Type: application/json
-{
-    "login": "Tim",
-    "password": "13553_Danil",
-}
+
 ###
