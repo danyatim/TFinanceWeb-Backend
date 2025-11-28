@@ -1,7 +1,22 @@
 @TFinanceWeb.Api_HostAddress = http://localhost:5113
 @TFinanceWeb = variable value
+###
 
-GET {{TFinanceWeb.Api_HostAddress}}/api/WeatherForecast
-Accept: application/json
+GET {{TFinanceWeb.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+{
+    "username": "Tim",
+    "login": "Tim",
+    "email": "danya_tim@icloud.com",
+    "password": "13553_Danil",
+    "confirmPassword": "13553_Danil",
+}
+###
 
+GET {{TFinanceWeb.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+{
+    "login": "Tim",
+    "password": "13553_Danil",
+}
 ###

@@ -19,6 +19,11 @@ public class AuthController(FinanceWebDbContext context) : Controller
         string ConfirmPassword
         );
     
+    public record LoginRequest(
+        string Login,
+        string Password
+        );
+    
     [HttpPost("/register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
@@ -72,5 +77,39 @@ public class AuthController(FinanceWebDbContext context) : Controller
             Console.WriteLine(ex);
             return StatusCode(500, "Ошибка при создании пользователя, попробуйте позже.");
         }
+    }
+
+    [HttpPost("/login")]
+    public async Task<IActionResult> Login(LoginRequest request)
+    {
+        // Валидация входных данных
+        var validation = ValidateLogin.Login(
+            login: request.Login.Trim(),
+            password: request.Password.Trim()
+        );
+        
+        if (!validation.isValid)
+        {
+            return BadRequest(validation.errorMessage);
+        }
+        
+        // Проверка существования пользователя
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Login == request.Login);
+        if (user == null)
+        {
+            return Unauthorized(new {message = "Неверный логин или пароль."});
+        }
+        
+        // Проверка пароля
+        var hasher = new PasswordHasher<User>();
+        var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        if (result == PasswordVerificationResult.Failed)
+        {
+            return Unauthorized(new {message = "Неверный логин или пароль."});
+        }
+        
+        // Успешный вход
+        return Ok(new { message = "Вход выполнен успешно", userId = user.UserId });
     }
 }
