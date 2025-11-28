@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TFinanceWeb.Api.Data;
 using TFinanceWeb.Api.Models;
+using TFinanceWeb.Api.Utils;
 
 namespace TFinanceWeb.Api.Controllers;
 
@@ -9,29 +11,66 @@ namespace TFinanceWeb.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController(FinanceWebDbContext context) : Controller
 {
-    public record RegisterRequest(string Email, string Login, string Password);
+    public record RegisterRequest(
+        string Username,
+        string Login,
+        string Email,
+        string Password,
+        string ConfirmPassword
+        );
     
-    [HttpGet("/register")]
-    public async Task<IActionResult> Login(RegisterRequest request)
+    [HttpPost("/register")]
+    public async Task<IActionResult> Register(RegisterRequest request)
     {
-        //Init User
-        var user = new User
+        // Валидация входных данных
+        var validation = ValidateRegister.ValidateRegisterRequest(
+            login: request.Login.Trim(),
+            username: request.Username.Trim(),
+            email: request.Email.Trim(),
+            password: request.Password.Trim(),
+            confirmPassword: request.ConfirmPassword.Trim()
+        );
+        
+        if (!validation.isValid)
         {
-            UserId = Guid.NewGuid(),
-            Username =  request.Login,
-            Email = request.Email,
-            PasswordHash = string.Empty
-        };
+            return BadRequest(validation.errorMessage);
+        }
         
-        //Init HasherPassword and add hash password 
-        var hasher = new PasswordHasher<User>();
-        user.PasswordHash = hasher.HashPassword(user, request.Password);
+        // Проверка существования пользователя
+        if (await context.Users.AnyAsync(u => u.Email == request.Email || u.Login == request.Login))
+        {
+            return Conflict("Пользователь с таким email или логином уже существует");
+        }
+
+        try
+        {
+            //Init User
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                Username = request.Username,
+                Login = request.Login,
+                Email = request.Email,
+                PasswordHash = string.Empty
+            };
+
+            //Init HasherPassword and add hash password 
+            var hasher = new PasswordHasher<User>();
+            user.PasswordHash = hasher.HashPassword(user, request.Password);
+
+            //Save user for database
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+            
+            //Return result
+            return Ok(new { message = "Регистрация успешна", userId = user.UserId });
+        }
         
-        //Save user for database
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-        
-        //Return result
-        return Ok("Login successful");
+        catch (Exception ex)
+        {
+            //Log exception
+            Console.WriteLine(ex);
+            return StatusCode(500, "Ошибка при создании пользователя, попробуйте позже.");
+        }
     }
 }

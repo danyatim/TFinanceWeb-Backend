@@ -51,3 +51,4 @@ publish/
 Thumbs.db
 appsettings.Development.json
 appsettings.json
+!/Migrations/

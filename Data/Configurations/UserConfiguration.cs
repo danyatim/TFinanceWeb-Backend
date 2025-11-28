@@ -17,6 +17,10 @@ public class UserConfiguration
             .IsRequired()
             .HasMaxLength(50);
         
+        builder.Property(u => u.Login)
+            .IsRequired()
+            .HasMaxLength(50);
+        
         builder.Property(u => u.Email)
             .IsRequired()
             .HasMaxLength(100);
