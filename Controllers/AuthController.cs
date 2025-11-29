@@ -3,14 +3,27 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TFinanceWeb.Api.Data;
 using TFinanceWeb.Api.Models;
+using TFinanceWeb.Api.Services;
 using TFinanceWeb.Api.Utils;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
 namespace TFinanceWeb.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(FinanceWebDbContext context) : Controller
+public class AuthController(
+    FinanceWebDbContext context,
+    AuthUserService authUserService,
+    IWebHostEnvironment environment
+    ) : ControllerBase
 {
+    private readonly AuthUserService _authUserService = authUserService;
+    private readonly FinanceWebDbContext _context = context;
+    private readonly IWebHostEnvironment _env =  environment;
+    
     public record RegisterRequest(
         string Username,
         string Login,
@@ -36,22 +49,18 @@ public class AuthController(FinanceWebDbContext context) : Controller
             confirmPassword: request.ConfirmPassword.Trim()
         );
         
-        if (!validation.isValid)
-        {
+        if (!validation.isValid) {
             return BadRequest(validation.errorMessage);
         }
         
         // Проверка существования пользователя
-        if (await context.Users.AnyAsync(u => u.Email == request.Email || u.Login == request.Login))
-        {
+        if (await _context.Users.AnyAsync(u => u.Email == request.Email || u.Login == request.Login)) {
             return Conflict("Пользователь с таким email или логином уже существует");
         }
 
-        try
-        {
+        try {
             //Init User
-            var user = new User
-            {
+            var user = new User {
                 UserId = Guid.NewGuid(),
                 Username = request.Username,
                 Login = request.Login,
@@ -64,15 +73,14 @@ public class AuthController(FinanceWebDbContext context) : Controller
             user.PasswordHash = hasher.HashPassword(user, request.Password);
 
             //Save user for database
-            context.Users.Add(user);
-            await context.SaveChangesAsync();
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
             
             //Return result
             return Ok(new { message = "Регистрация успешна", userId = user.UserId });
         }
         
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             //Log exception
             Console.WriteLine(ex);
             return StatusCode(500, "Ошибка при создании пользователя, попробуйте позже.");
@@ -87,29 +95,40 @@ public class AuthController(FinanceWebDbContext context) : Controller
             login: request.Login.Trim(),
             password: request.Password.Trim()
         );
-        
-        if (!validation.isValid)
-        {
+        if (!validation.isValid) {
             return BadRequest(validation.errorMessage);
         }
         
         // Проверка существования пользователя
-        var user = await context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Login == request.Login);
-        if (user == null)
-        {
+        if (user == null) {
             return Unauthorized(new {message = "Неверный логин или пароль."});
         }
         
         // Проверка пароля
         var hasher = new PasswordHasher<User>();
         var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-        if (result == PasswordVerificationResult.Failed)
-        {
+        if (result == PasswordVerificationResult.Failed) {
             return Unauthorized(new {message = "Неверный логин или пароль."});
         }
-        
+        var token = _authUserService.GenerateJwtToken(user.Username, user.Email, user.Id.ToString());
+        Response.Cookies.Append("uid", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure =  true,
+            SameSite = _env.IsDevelopment() ? SameSiteMode.None : SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddHours(1)
+        });
         // Успешный вход
-        return Ok(new { message = "Вход выполнен успешно", userId = user.UserId });
+        return Ok(new { message = "Вход выполнен успешно", username = user.Username });
+    }
+
+    [HttpPost("/logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("uid");
+        //Успешный выход
+        return Ok(new { message = "Выход выполнен успешно"});
     }
 }
